@@ -1,6 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'animation/animation_bloc.dart';
+import 'calculation.dart';
+import 'result.dart';
+
+const int resultCount = 5;
 
 void main() {
   runApp(MyApp());
@@ -16,165 +23,106 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.amber,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(title: 'Ziehe eine Rechnung auf das Ergebnis'),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  final String title;
+  MyHomePage({Key key}) : super(key: key);
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class Calculation {
-  Calculation({
-    this.summand1,
-    this.summand2,
-    this.result,
-    this.calculationString,
-    this.resultString,
-  });
-
-  final int summand1;
-  final int summand2;
-  final int result;
-
-  final String calculationString;
-  final String resultString;
-}
-
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   final random = Random();
 
+  AnimationController animationController;
   Calculation correctCalculation;
   int correctIndexCalculation;
   int correctIndexResult;
+  Animation<double> animation;
 
   @override
   void initState() {
     correctCalculation = createCalculation(random);
-    correctIndexCalculation = random.nextInt(5);
-    correctIndexResult = random.nextInt(5);
+    correctIndexResult = random.nextInt(resultCount);
+    animationController =
+        AnimationController(vsync: this, duration: Duration(seconds: 1));
+
     super.initState();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Row(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            // calculation Column
-            Expanded(
-              child: CalculationWidget(random, correctCalculation),
-            ),
-            // result Column
-            Expanded(
-              child: ListView.builder(
-                  itemCount: 5,
-                  itemBuilder: (context, index) {
-                    if (index == correctIndexResult) {
-                      return ResultWidget(random, correctCalculation);
-                    } else {
-                      return ResultWidget(random, createCalculation(random));
+  void dispose() {
+    animationController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => BlocProvider(
+        create: (context) => AnimationBloc(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            animation = Tween<double>(begin: 500, end: constraints.maxHeight)
+                .animate(animationController)
+                  ..addListener(() {
+                    setState(() {});
+                  })
+                  ..addStatusListener((state) {
+                    if (state == AnimationStatus.completed) {
+                      context.read<AnimationBloc>().resetAnimationState();
                     }
-                  }),
-            ),
-          ],
-        ));
-  }
-}
-
-class CalculationWidget extends StatelessWidget {
-  CalculationWidget(this.random, this.calculation);
-
-  final Random random;
-  final Calculation calculation;
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        Color((random.nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
-    return Draggable<int>(
-        data: calculation.result,
-        feedback: SizedBox(
-          width: 180,
-          child: CalculationCard(
-            calculationString: calculation.calculationString,
-            color: color,
-          ),
+                  });
+            return Scaffold(
+                body: Column(
+              children: [
+                SizedBox(height: 64),
+                // calculation Column
+                CalculationWidget(
+                    random: random, calculation: correctCalculation),
+                // result Column
+                Expanded(
+                  child: BlocBuilder<AnimationBloc, AnimationState>(
+                    builder: (context, state) {
+                      if (state is CorrectAnimationState) {
+                        animationController.forward();
+                      }
+                      return SizedBox(
+                        height: animation.value,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: resultCount,
+                          itemBuilder: (context, index) {
+                            if (index == correctIndexResult) {
+                              return ResultWidget(
+                                  random: random,
+                                  calculation: correctCalculation);
+                            } else {
+                              return ResultWidget(
+                                  random: random,
+                                  calculation: createCalculation(random));
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                )
+              ],
+            ));
+          },
         ),
-        child: CalculationCard(
-          calculationString: calculation.calculationString,
-          color: color,
-        ));
-  }
+      );
 }
 
-class CalculationCard extends StatelessWidget {
-  const CalculationCard(
-      {Key key, @required this.calculationString, @required this.color})
-      : super(key: key);
-
-  final String calculationString;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-      height: 180,
-      child: Card(
-          elevation: 4,
-          color: color,
-          child: Center(child: Text(calculationString))));
-}
-
-class ResultWidget extends StatelessWidget {
-  ResultWidget(this.random, this.calculation);
-
-  final Random random;
-  final Calculation calculation;
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        Color((random.nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
-    return DragTarget<int>(
-      onWillAccept: (_) => true,
-      onAccept: (details) {
-        print(details);
-        if (details == calculation.result) {
-          print('correct');
-        }
-      },
-      builder: (context, List<int> candidateData, List<dynamic> rejectedData) {
-        return SizedBox(
-          height: 180,
-          child: Card(
-              elevation: 4,
-              color: color,
-              child: Center(child: Text(calculation.resultString))),
-        );
-      },
-    );
-  }
-}
-
-Calculation createCalculation(Random random) {
-  final summand1 = random.nextInt(10);
-  final summand2 = random.nextInt(10);
-  final result = summand1 + summand2;
-
-  return Calculation(
-      summand1: random.nextInt(10),
-      summand2: random.nextInt(10),
-      result: result,
-      calculationString: '$summand1 + $summand2',
-      resultString: '$result');
-}
+const colors = [
+  Colors.amberAccent,
+  Colors.blueAccent,
+  Colors.orangeAccent,
+  Colors.deepPurpleAccent,
+  Colors.cyanAccent,
+  Colors.purpleAccent,
+  Colors.pinkAccent,
+];
