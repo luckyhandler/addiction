@@ -76,41 +76,44 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                     }
                   });
             return Scaffold(
-                body: Column(
-              children: [
-                SizedBox(height: 64),
-                // calculation Column
-                CalculationWidget(
-                    random: random, calculation: correctCalculation),
-                // result Column
-                Expanded(
-                  child: BlocBuilder<AnimationBloc, AnimationState>(
-                    builder: (context, state) {
-                      if (state is CorrectAnimationState) {
-                        animationController.forward();
-                      }
-                      return SizedBox(
-                        height: animation.value,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: resultCount,
-                          itemBuilder: (context, index) {
-                            if (index == correctIndexResult) {
-                              return ResultWidget(
-                                  random: random,
-                                  calculation: correctCalculation);
-                            } else {
-                              return ResultWidget(
-                                  random: random,
-                                  calculation: createCalculation(random));
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                )
-              ],
+                body: Container(
+              color: colors[random.nextInt(colors.length - 1)],
+              child: Column(
+                children: [
+                  SizedBox(height: 64),
+                  // calculation Column
+                  CalculationWidget(
+                      random: random, calculation: correctCalculation),
+                  // result Column
+                  Expanded(
+                    child: BlocBuilder<AnimationBloc, AnimationState>(
+                      builder: (context, state) {
+                        if (state is CorrectAnimationState) {
+                          animationController.forward();
+                        }
+                        return SizedBox(
+                          height: animation.value,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: resultCount,
+                            itemBuilder: (context, index) {
+                              if (index == correctIndexResult) {
+                                return ResultWidget(
+                                    random: random,
+                                    calculation: correctCalculation);
+                              } else {
+                                return ResultWidget(
+                                    random: random,
+                                    calculation: createCalculation(random));
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                ],
+              ),
             ));
           },
         ),
